@@ -21,6 +21,13 @@ sudo /opt/kafka/bin/zookeeper-server-start.sh /opt/kafka/config/zookeeper.proper
 #Iniciamos el servidor Kafka:
 sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties &
 
+#Descargamos el dataset
+wget  https://www.datos.gov.co/resource/gt2j-8ykr.csv      
+
+#Movemos la factura a la carpeta datasets
+mv /home/vboxuser/gt2j-8ykr.csv /home/vboxuser/datasets/covid_data.csv
+
+
 #Creamos el topic de kafka llevara el nombre de covid_data
 /opt/kafka/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic covid_data
 
