@@ -1,5 +1,10 @@
+#Según el análisis de los datos y las gráficas obtenidas, se observa que la mayor cantidad de casos positivos se registra en personas de 80 años o más. 
+#Esto sugiere una mayor vulnerabilidad de este grupo etario frente al contagio, para lograr el analisis realizamos los siguientes pasos:
+
+
 #Instalamos mediante PIP la librería de Python Kafka
 pip install kafka-python
+
 
 #Descargamos Apache
 wget https://downloads.apache.org/kafka/3.7.2/kafka_2.13-3.7.2.tgz
