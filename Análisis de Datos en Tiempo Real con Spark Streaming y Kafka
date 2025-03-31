@@ -1,0 +1,130 @@
+#Instalamos mediante PIP la librería de Python Kafka
+pip install kafka-python
+
+#Descargamos Apache
+wget https://downloads.apache.org/kafka/3.7.2/kafka_2.13-3.7.2.tgz
+
+#Descomprimimos la carpeta
+tar -xzf kafka_2.13-3.7.2.tgz
+
+#Movemos de carpeta Apache Kafka
+sudo mv kafka_2.13-3.7.2 /opt/kafka
+
+#Iniciamos el servidor ZooKeeper
+sudo /opt/kafka/bin/zookeeper-server-start.sh /opt/kafka/config/zookeeper.properties &
+
+#Iniciamos el servidor Kafka:
+sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties &
+
+#Creamos el topic de kafka llevara el nombre de covid_data
+/opt/kafka/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic covid_data
+
+#Implementamos el productor(producer) de Kafka y creamos un archivo llamado kafka_producer.py
+nano kafka_producer.py 
+
+#Dentro del archivo colocamos lo siguiente
+
+#Declaramos las librerias
+import time
+import json
+import random
+from kafka import KafkaProducer
+import pandas as pd
+
+# Ruta del dataset
+file_path = "/home/vboxuser/datasets/covid_data.csv"
+
+# Cargar el dataset
+df = pd.read_csv(file_path)
+
+# Seleccionar columnas relevantes
+df = df[['id_de_caso', 'fecha_diagnostico', 'edad', 'sexo', 'ciudad_municipio_nom', 'fuente_tipo_contagio']]
+
+# Configurar el Producer de Kafka
+producer = KafkaProducer(
+    bootstrap_servers=['localhost:9092'],
+    value_serializer=lambda x: json.dumps(x).encode('utf-8')
+)
+
+# Enviar datos a Kafka
+for index, row in df.iterrows():
+    message = {
+        "id_caso": int(row["id_de_caso"]),
+        "fecha_diagnostico": row["fecha_diagnostico"],
+        "edad": int(row["edad"]),
+        "sexo": row["sexo"],
+        "ciudad": row["ciudad_municipio_nom"],
+        "tipo_contagio": row["fuente_tipo_contagio"]
+    }
+
+    producer.send('covid_data', value=message)
+    print(f"Enviado: {message}")
+
+    time.sleep(1)  # Pausa para simular streaming en tiempo real
+
+# Cerrar el Producer
+producer.close()
+
+#Implementamos el consumidor con Spark Streaming y creamos un archivo llamado spark_streaming_consumer.py 
+nano spark_streaming_consumer.py
+
+#Dentro del archivo colocamos la siguiente informacion
+
+#Declaramos las  librerias
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import from_json, col, window
+from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, TimestampType
+from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, TimestampType, StringType, DateType, TimestampType
+import logging
+
+# Configura el nivel de log a WARN para reducir los mensajes INFO
+spark = SparkSession.builder \
+    .appName("KafkaSparkStreaming") \
+    .getOrCreate()
+
+spark.sparkContext.setLogLevel("WARN")
+
+# Definir el esquema del dataset de COVID
+schema = StructType([
+    StructField("id_caso", IntegerType(), True),
+    StructField("fecha_diagnostico", StringType(), True),  # Spark manejará esto como String
+    StructField("edad", IntegerType(), True),
+    StructField("sexo", StringType(), True),
+    StructField("ciudad", StringType(), True),
+    StructField("tipo_contagio", StringType(), True)
+])
+
+# Leer datos desde Kafka
+df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "localhost:9092") \
+    .option("subscribe", "covid_data") \
+    .option("startingOffsets", "earliest") \
+    .load()
+
+# Convertir los datos de JSON a columnas estructuradas
+df_parsed = df.selectExpr("CAST(value AS STRING)") \
+    .select(from_json(col("value"), schema).alias("data")) \
+    .select("data.*")
+
+# Mostrar los datos en consola
+query = df_parsed \
+    .writeStream \
+    .outputMode("append") \
+    .format("console") \
+    .start()
+
+query.awaitTermination()
+
+#Para la ejecucion y analisis de datos ejecutamos el productor
+python3 kafka_producer.py
+
+#En otra ventana ejecutamos el consumidor de Spark Streaming
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 spark_streaming_consumer.py
+
+
+
+
+
+
+
