@@ -1,0 +1,91 @@
+#En este ejercicio crearemos una base de datos donde registramos, consultaremos y analizaremos la información de los pacientes atendidos en un hospital.
+#Creamos la base de datos Hospital y la colección pacientes, realizamos el registro de los 100 documentos.
+
+for (let i = 1; i <= 100; i++) {
+  db.pacientes.insertOne({
+    nombre: `Paciente ${i}`,
+    edad: Math.floor(Math.random() * 60) + 18, // Edad entre 18 y 77
+    genero: i % 2 === 0 ? "Femenino" : "Masculino",
+    enfermedad: (i % 4 === 0) ? "Diabetes" : (i % 3 === 0) ? "Asma" : (i % 2 === 0) ? "Hipertensión" : "COVID-19",
+    fecha_ingreso: new Date(2025, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+    estado: i % 6 === 0 ? "recuperado" : "activo"
+  });
+}
+#Consultas básicas
+#Insercion
+
+db.pacientes.insertOne({
+  nombre: "Diana Sánchez",
+  edad: 32,
+  genero: "Femenino",
+  enfermedad: "Gripe",
+  fecha_ingreso: new Date("2025-04-10"),
+  estado: "activo"
+});
+
+#Seleccion
+
+db.pacientes.find();
+
+#Actualizacion
+
+db.pacientes.updateOne(
+  { nombre: "Diana Sánchez" },
+  { $set: { estado: "recuperado" } }
+);
+
+#Eliminacion
+
+db.pacientes.deleteOne({ nombre: "Diana Sánchez" });
+
+#Consultas con filtros y operadores.
+#Filtro con igualdad múltiple (AND lógico)
+db.pacientes.find({ enfermedad: "Hipertensión", estado: "activo" });
+
+#Filtro con operador de comparación $gt (mayor que)
+db.pacientes.find({ edad: { $gt: 60 } });
+
+#Filtro con operador $lt (menor que)
+db.pacientes.find({ edad: { $lt: 30 } });
+
+#Filtro con operador $in (en lista de valores)
+db.pacientes.find({ enfermedad: { $in: ["Diabetes", "Asma", "Hipertensión"] } });
+
+#Filtro con operador $or (O lógico):
+db.pacientes.find({
+  $or: [
+    { estado: "recuperado" },
+    { edad: { $lt: 25 } }
+  ]
+});
+
+#Filtro con $and explícito (más de dos condiciones)
+db.pacientes.find({
+  $and: [
+    { edad: { $gte: 30 } },
+    { edad: { $lte: 50 } },
+    { estado: "activo" }
+  ]
+});
+
+#Consultas de agregación
+#Consulta por fecha de ingreso posterior a una fecha específica
+db.pacientes.find({ fecha_ingreso: { $gte: new Date("2025-04-01") } });
+
+#Contar cuántos pacientes hay en total
+db.pacientes.countDocuments();
+
+#Contar cuántos pacientes hay por enfermedad
+db.pacientes.aggregate([
+  { $group: { _id: "$enfermedad", total: { $sum: 1 } } }
+]);
+
+#Sumar todas las edades (total de años sumados)
+db.pacientes.aggregate([
+  { $group: { _id: null, suma_edades: { $sum: "$edad" } } }
+]);
+
+#Promedio de edad por enfermedad
+db.pacientes.aggregate([
+  { $group: { _id: "$enfermedad", edad_promedio: { $avg: "$edad" } } }
+]);
